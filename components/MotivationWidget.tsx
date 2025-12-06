@@ -9,6 +9,19 @@ interface MotivationWidgetProps {
   riskLevel?: RiskLevel;
 }
 
+const THEMES = [
+  "resilience found in nature",
+  "the power of small, imperfect steps",
+  "finding quiet in a noisy world",
+  "radical self-compassion",
+  "the perspective of time",
+  "inner strength and endurance",
+  "finding beauty in the present moment",
+  "acceptance of what is",
+  "hope as a discipline",
+  "the courage to rest"
+];
+
 const MotivationWidget: React.FC<MotivationWidgetProps> = ({ mode, riskLevel }) => {
   const [tip, setTip] = useState<string>('');
   const [loading, setLoading] = useState(false);
@@ -19,25 +32,37 @@ const MotivationWidget: React.FC<MotivationWidgetProps> = ({ mode, riskLevel }) 
     if (mode === 'OFF') return;
     setLoading(true);
     setIsPlaying(false);
+    
+    // Cleanup previous context
     if (audioContext) {
-        audioContext.close();
+        try {
+            await audioContext.close();
+        } catch (e) {
+            console.warn("Error closing audio context", e);
+        }
         setAudioContext(null);
     }
 
     try {
-      // 1. Generate Text with Context-Aware Prompt
-      let prompt = "Generate a short, very inspiring, single-sentence quote or mental health tip. It should be warm and encouraging.";
+      // 1. Generate Text with Dynamic Prompt to avoid repetition
+      const randomTheme = THEMES[Math.floor(Math.random() * THEMES.length)];
+      
+      let prompt = `Generate a unique, fresh, and non-cliché single-sentence quote or insight about '${randomTheme}'. It should be inspiring, thought-provoking, and original. Avoid common overused phrases like 'hang in there' or 'you got this'.`;
       
       if (riskLevel === RiskLevel.ELEVATED || riskLevel === RiskLevel.CRITICAL) {
-          prompt = "Generate a gentle, warm, and comforting short sentence for someone who is feeling a bit low or stressed. Focus on validation and gentle support. Do not be overly toxic positive.";
+          prompt = `Generate a gentle, warm, and deeply soothing single-sentence insight about '${randomTheme}' for someone who is feeling vulnerable. Focus on validation, safety, and kindness. Avoid toxic positivity. It should feel like a comforting hug.`;
       }
 
+      // Optimization: Use gemini-2.5-flash for faster response time
       const textResponse = await ai.models.generateContent({
-        model: 'gemini-3-pro-preview',
+        model: 'gemini-2.5-flash', 
         contents: prompt,
+        config: {
+            temperature: 1.2, // Higher temperature for more creativity/variety
+        }
       });
       
-      const newTip = textResponse.text?.trim() || "You are stronger than you know.";
+      const newTip = textResponse.text?.trim() || "The stars are still there, even behind the clouds.";
       setTip(newTip);
 
       // 2. If Speech mode, Generate Audio
@@ -62,7 +87,7 @@ const MotivationWidget: React.FC<MotivationWidgetProps> = ({ mode, riskLevel }) 
       }
     } catch (error) {
       console.error("GenAI Error:", error);
-      setTip("Take a deep breath. You're doing great.");
+      setTip("Take a gentle breath; you are doing the best you can.");
     } finally {
       setLoading(false);
     }
@@ -70,7 +95,14 @@ const MotivationWidget: React.FC<MotivationWidgetProps> = ({ mode, riskLevel }) 
 
   const playAudio = async (base64: string) => {
     try {
-        const ctx = new (window.AudioContext || (window as any).webkitAudioContext)({sampleRate: 24000});
+        const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+        const ctx = new AudioContextClass({sampleRate: 24000});
+        
+        // Handle autoplay policy
+        if (ctx.state === 'suspended') {
+            await ctx.resume();
+        }
+
         setAudioContext(ctx);
         
         // Decode Base64 to ArrayBuffer
@@ -81,9 +113,7 @@ const MotivationWidget: React.FC<MotivationWidgetProps> = ({ mode, riskLevel }) 
             bytes[i] = binaryString.charCodeAt(i);
         }
 
-        // Decode PCM logic
-        // The API returns raw PCM. We need to put it into an AudioBuffer.
-        // Assuming 24kHz sample rate and 1 channel as per typical config
+        // Decode PCM logic (Raw PCM 24kHz 1ch)
         const dataInt16 = new Int16Array(bytes.buffer);
         const audioBuffer = ctx.createBuffer(1, dataInt16.length, 24000);
         const channelData = audioBuffer.getChannelData(0);
@@ -94,7 +124,9 @@ const MotivationWidget: React.FC<MotivationWidgetProps> = ({ mode, riskLevel }) 
         const source = ctx.createBufferSource();
         source.buffer = audioBuffer;
         source.connect(ctx.destination);
-        source.onended = () => setIsPlaying(false);
+        source.onended = () => {
+            setIsPlaying(false);
+        };
         source.start();
         setIsPlaying(true);
     } catch (e) {
@@ -103,10 +135,11 @@ const MotivationWidget: React.FC<MotivationWidgetProps> = ({ mode, riskLevel }) 
   };
 
   useEffect(() => {
-    // Generate new tip when mode changes OR riskLevel changes (e.g. going from Normal to Elevated)
     generateTip();
     return () => {
-        if (audioContext) audioContext.close();
+        if (audioContext) {
+            audioContext.close().catch(console.error);
+        }
     }
   }, [mode, riskLevel]);
 
@@ -130,8 +163,15 @@ const MotivationWidget: React.FC<MotivationWidgetProps> = ({ mode, riskLevel }) 
                     <Sparkles className="w-4 h-4" />
                     <span>{riskLevel === RiskLevel.ELEVATED ? "Gentle Reminder" : "Daily Insight"}</span>
                 </div>
-                <p className="text-lg sm:text-xl font-medium text-slate-100 italic">
-                    "{loading ? "Finding the right words..." : tip}"
+                <p className="text-lg sm:text-xl font-medium text-slate-100 italic min-h-[3rem] flex items-center">
+                    {loading ? (
+                        <span className="flex items-center gap-2 text-slate-400 text-base not-italic">
+                             <RefreshCw className="w-4 h-4 animate-spin" />
+                             Generative AI is thinking...
+                        </span>
+                    ) : (
+                        `"${tip}"`
+                    )}
                 </p>
             </div>
             
