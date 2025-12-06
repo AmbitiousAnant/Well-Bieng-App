@@ -11,7 +11,18 @@ export const DATA_NORMAL: DailyMetric[] = [
   { day: 'Sun', sleepHours: 8.2, socialInteractions: 35, sentimentScore: 92, mobilityScore: 55 },
 ];
 
-// Anomaly "Risk" Data (Sleep fragmentation, social withdrawal, drop in sentiment)
+// Elevated "Check-In" Data (Minor deviations)
+export const DATA_ELEVATED: DailyMetric[] = [
+  { day: 'Mon', sleepHours: 7.5, socialInteractions: 45, sentimentScore: 80, mobilityScore: 85 },
+  { day: 'Tue', sleepHours: 6.5, socialInteractions: 40, sentimentScore: 75, mobilityScore: 80 },
+  { day: 'Wed', sleepHours: 6.0, socialInteractions: 35, sentimentScore: 70, mobilityScore: 75 },
+  { day: 'Thu', sleepHours: 5.8, socialInteractions: 30, sentimentScore: 65, mobilityScore: 70 },
+  { day: 'Fri', sleepHours: 5.5, socialInteractions: 25, sentimentScore: 60, mobilityScore: 65 },
+  { day: 'Sat', sleepHours: 5.0, socialInteractions: 20, sentimentScore: 58, mobilityScore: 50 },
+  { day: 'Sun', sleepHours: 5.2, socialInteractions: 15, sentimentScore: 55, mobilityScore: 45 },
+];
+
+// Critical Anomaly Data (Sleep fragmentation, social withdrawal, drop in sentiment)
 export const DATA_RISK: DailyMetric[] = [
   { day: 'Mon', sleepHours: 7.5, socialInteractions: 45, sentimentScore: 82, mobilityScore: 85 },
   { day: 'Tue', sleepHours: 5.2, socialInteractions: 20, sentimentScore: 65, mobilityScore: 60 },

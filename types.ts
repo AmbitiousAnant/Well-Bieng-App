@@ -32,4 +32,7 @@ export interface UserSettings {
   contacts: Contact[];
   allowAutomatedAlerts: boolean;
   dataRetentionDays: number;
+  motivationConfig: {
+    mode: 'TEXT' | 'SPEECH' | 'OFF';
+  };
 }

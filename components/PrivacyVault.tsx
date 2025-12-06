@@ -20,7 +20,7 @@ const PrivacyVault: React.FC<PrivacyVaultProps> = ({ logs }) => {
                 Zero-Knowledge Sandbox
             </h2>
             <p className="text-slate-400 max-w-2xl mb-6">
-                Sentinell operates entirely within a secure enclave on your device's Tegra/Snapdragon security chip. 
+                Partner operates entirely within a secure enclave on your device's Tegra/Snapdragon security chip. 
                 Raw data (texts, videos, location) never leaves this sandbox. Only anonymized mathematical vectors 
                 are used for anomaly detection.
             </p>

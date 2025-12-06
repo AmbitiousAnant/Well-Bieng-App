@@ -1,7 +1,6 @@
-
 import React, { useState } from 'react';
 import { UserSettings, Contact } from '../types';
-import { Users, Plus, Trash2, Phone, User, Save } from 'lucide-react';
+import { Users, Plus, Trash2, Phone, User, Save, Volume2, MessageSquare, MicOff } from 'lucide-react';
 
 interface SettingsViewProps {
   settings: UserSettings;
@@ -42,6 +41,53 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, onUpdateSettings 
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
+      
+      {/* Motivation Settings */}
+      <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-6">
+        <h2 className="text-lg font-bold text-slate-100 mb-4 flex items-center gap-2">
+            <MessageSquare className="w-5 h-5 text-indigo-400" />
+            AI Companion Settings
+        </h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <button 
+                onClick={() => onUpdateSettings({...settings, motivationConfig: { mode: 'TEXT' }})}
+                className={`p-4 rounded-xl border flex flex-col items-center gap-2 transition-all ${
+                    settings.motivationConfig.mode === 'TEXT' 
+                    ? 'bg-indigo-600/20 border-indigo-500 text-white' 
+                    : 'bg-slate-900 border-slate-700 text-slate-400 hover:border-slate-600'
+                }`}
+            >
+                <MessageSquare className="w-6 h-6" />
+                <span className="font-medium">Text Only</span>
+                <span className="text-xs opacity-70">Daily motivators in text</span>
+            </button>
+            <button 
+                onClick={() => onUpdateSettings({...settings, motivationConfig: { mode: 'SPEECH' }})}
+                className={`p-4 rounded-xl border flex flex-col items-center gap-2 transition-all ${
+                    settings.motivationConfig.mode === 'SPEECH' 
+                    ? 'bg-indigo-600/20 border-indigo-500 text-white' 
+                    : 'bg-slate-900 border-slate-700 text-slate-400 hover:border-slate-600'
+                }`}
+            >
+                <Volume2 className="w-6 h-6" />
+                <span className="font-medium">Voice Mode</span>
+                <span className="text-xs opacity-70">Spoken daily tips (TTS)</span>
+            </button>
+            <button 
+                onClick={() => onUpdateSettings({...settings, motivationConfig: { mode: 'OFF' }})}
+                className={`p-4 rounded-xl border flex flex-col items-center gap-2 transition-all ${
+                    settings.motivationConfig.mode === 'OFF' 
+                    ? 'bg-slate-700 border-slate-600 text-white' 
+                    : 'bg-slate-900 border-slate-700 text-slate-400 hover:border-slate-600'
+                }`}
+            >
+                <MicOff className="w-6 h-6" />
+                <span className="font-medium">Disabled</span>
+                <span className="text-xs opacity-70">No daily messages</span>
+            </button>
+        </div>
+      </div>
+
       <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-6">
         <div className="flex items-center gap-3 mb-6">
           <div className="bg-indigo-500/10 p-2 rounded-lg border border-indigo-500/20">

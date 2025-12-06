@@ -4,18 +4,24 @@ import {
   BarChart, Bar, Legend
 } from 'recharts';
 import { Activity, Moon, MessageCircle, HeartPulse, AlertTriangle, CheckCircle } from 'lucide-react';
-import { DailyMetric, RiskLevel } from '../types';
+import { DailyMetric, RiskLevel, UserSettings } from '../types';
+import MotivationWidget from './MotivationWidget';
 
 interface DashboardProps {
   data: DailyMetric[];
   riskLevel: RiskLevel;
+  settings: UserSettings;
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ data, riskLevel }) => {
+const Dashboard: React.FC<DashboardProps> = ({ data, riskLevel, settings }) => {
   const isCritical = riskLevel === RiskLevel.CRITICAL;
 
   return (
     <div className="space-y-6">
+      
+      {/* AI Motivation Widget */}
+      <MotivationWidget mode={settings.motivationConfig.mode} riskLevel={riskLevel} />
+
       {/* Header Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <StatCard 
