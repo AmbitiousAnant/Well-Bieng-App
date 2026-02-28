@@ -1,5 +1,5 @@
 {
   "name": "Partner: Wellness Guardian",
-  "description": "A privacy-first, on-device mental health monitoring prototype that visualizes local anomaly detection and ethical intervention protocols.",
+  "description": "A privacy-first, on-device mental health monitoring prototype featuring an AI companion powered by Gemini 3.1 Pro with deep thinking capabilities and ethical intervention protocols.",
   "requestFramePermissions": []
 }

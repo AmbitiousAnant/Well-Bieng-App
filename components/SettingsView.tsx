@@ -1,6 +1,7 @@
+
 import React, { useState } from 'react';
 import { UserSettings, Contact } from '../types';
-import { Users, Plus, Trash2, Phone, User, Save, Volume2, MessageSquare, MicOff } from 'lucide-react';
+import { Users, Plus, Trash2, Phone, User, Save, Volume2, MessageSquare, MicOff, Edit2 } from 'lucide-react';
 
 interface SettingsViewProps {
   settings: UserSettings;
@@ -11,6 +12,8 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, onUpdateSettings 
   const [newContactName, setNewContactName] = useState('');
   const [newContactPhone, setNewContactPhone] = useState('');
   const [newContactRelation, setNewContactRelation] = useState('Mentor');
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [tempName, setTempName] = useState(settings.userName);
 
   const handleAddContact = (e: React.FormEvent) => {
     e.preventDefault();
@@ -39,9 +42,45 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, onUpdateSettings 
     });
   };
 
+  const handleSaveName = () => {
+    if (tempName.trim()) {
+      onUpdateSettings({ ...settings, userName: tempName });
+      setIsEditingName(false);
+    }
+  };
+
   return (
     <div className="max-w-4xl mx-auto space-y-6">
       
+      {/* Profile Section */}
+      <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-6 flex items-center justify-between">
+         <div className="flex items-center gap-4">
+            <div className="w-16 h-16 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-xl font-bold text-white shadow-lg">
+                {settings.userName.charAt(0)}
+            </div>
+            <div>
+                {isEditingName ? (
+                    <div className="flex items-center gap-2">
+                        <input 
+                            type="text" 
+                            value={tempName}
+                            onChange={(e) => setTempName(e.target.value)}
+                            className="bg-slate-900 border border-slate-600 rounded px-2 py-1 text-white focus:outline-none focus:border-emerald-500"
+                            autoFocus
+                        />
+                        <button onClick={handleSaveName} className="text-emerald-400 hover:text-emerald-300"><Save className="w-5 h-5"/></button>
+                    </div>
+                ) : (
+                    <h2 className="text-2xl font-bold text-slate-100">{settings.userName}</h2>
+                )}
+                <p className="text-sm text-slate-400">Primary User</p>
+            </div>
+         </div>
+         <button onClick={() => setIsEditingName(!isEditingName)} className="text-slate-500 hover:text-white transition-colors">
+            <Edit2 className="w-5 h-5" />
+         </button>
+      </div>
+
       {/* Motivation Settings */}
       <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-6">
         <h2 className="text-lg font-bold text-slate-100 mb-4 flex items-center gap-2">

@@ -1,12 +1,14 @@
+
 import React, { useState, useEffect } from 'react';
-import { Sparkles, RefreshCw, Volume2, Pause, VolumeX } from 'lucide-react';
+import { Sparkles, RefreshCw, Volume2, Pause, VolumeX, Image as ImageIcon } from 'lucide-react';
 import { ai } from '../genai';
 import { Modality } from "@google/genai";
-import { RiskLevel } from '../types';
+import { RiskLevel, UserSettings } from '../types';
 
 interface MotivationWidgetProps {
   mode: 'TEXT' | 'SPEECH' | 'OFF';
   riskLevel?: RiskLevel;
+  settings: UserSettings;
 }
 
 const THEMES = [
@@ -22,16 +24,20 @@ const THEMES = [
   "the courage to rest"
 ];
 
-const MotivationWidget: React.FC<MotivationWidgetProps> = ({ mode, riskLevel }) => {
+const MotivationWidget: React.FC<MotivationWidgetProps> = ({ mode, riskLevel, settings }) => {
   const [tip, setTip] = useState<string>('');
   const [loading, setLoading] = useState(false);
   const [audioContext, setAudioContext] = useState<AudioContext | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [bgImage, setBgImage] = useState<string>('');
+  const [imageLoading, setImageLoading] = useState(false);
   
   const generateTip = async () => {
     if (mode === 'OFF') return;
     setLoading(true);
+    setImageLoading(true);
     setIsPlaying(false);
+    setBgImage(''); // Reset image while loading
     
     // Cleanup previous context
     if (audioContext) {
@@ -44,26 +50,56 @@ const MotivationWidget: React.FC<MotivationWidgetProps> = ({ mode, riskLevel }) 
     }
 
     try {
-      // 1. Generate Text with Dynamic Prompt to avoid repetition
+      // 1. Generate Text with Dynamic Prompt (Personalized)
       const randomTheme = THEMES[Math.floor(Math.random() * THEMES.length)];
       
-      let prompt = `Generate a unique, fresh, and non-cliché single-sentence quote or insight about '${randomTheme}'. It should be inspiring, thought-provoking, and original. Avoid common overused phrases like 'hang in there' or 'you got this'.`;
+      let prompt = `Generate a unique, fresh, and non-cliché single-sentence quote or insight about '${randomTheme}' specifically for a user named ${settings.userName}. It should be inspiring, thought-provoking, and original. Avoid common overused phrases like 'hang in there' or 'you got this'.`;
       
       if (riskLevel === RiskLevel.ELEVATED || riskLevel === RiskLevel.CRITICAL) {
-          prompt = `Generate a gentle, warm, and deeply soothing single-sentence insight about '${randomTheme}' for someone who is feeling vulnerable. Focus on validation, safety, and kindness. Avoid toxic positivity. It should feel like a comforting hug.`;
+          prompt = `Generate a gentle, warm, and deeply soothing single-sentence insight about '${randomTheme}' for ${settings.userName} who is feeling vulnerable. Focus on validation, safety, and kindness. Avoid toxic positivity. It should feel like a comforting hug.`;
       }
 
-      // Optimization: Use gemini-2.5-flash for faster response time
-      const textResponse = await ai.models.generateContent({
+      // Parallel Execution: Text and Image
+      const textPromise = ai.models.generateContent({
         model: 'gemini-2.5-flash', 
         contents: prompt,
-        config: {
-            temperature: 1.2, // Higher temperature for more creativity/variety
-        }
+        config: { temperature: 1.2 }
       });
-      
+
+      // Visual Intelligence: Generate Ambient Background
+      // Use 'gemini-2.5-flash-image' for visual generation
+      const imagePrompt = `A soft, abstract, calming, minimal wallpaper style digital art representing '${randomTheme}'. Gentle pastel colors, soothing gradient, no text, high quality.`;
+      const imagePromise = ai.models.generateContent({
+          model: 'gemini-2.5-flash-image',
+          contents: { parts: [{ text: imagePrompt }] }
+      });
+
+      // Wait for text first to show immediate feedback
+      const textResponse = await textPromise;
       const newTip = textResponse.text?.trim() || "The stars are still there, even behind the clouds.";
       setTip(newTip);
+      setLoading(false); // Text is ready
+
+      // Handle Image Result
+      imagePromise.then(imageResponse => {
+          // Iterate through parts to find the image
+          let foundImage = false;
+          for (const part of imageResponse.candidates?.[0]?.content?.parts || []) {
+              if (part.inlineData) {
+                  const base64EncodeString = part.inlineData.data;
+                  setBgImage(`data:image/png;base64,${base64EncodeString}`);
+                  foundImage = true;
+                  break;
+              }
+          }
+          if(!foundImage) {
+              console.log("No image generated in response parts");
+          }
+          setImageLoading(false);
+      }).catch(err => {
+          console.error("Image gen error", err);
+          setImageLoading(false);
+      });
 
       // 2. If Speech mode, Generate Audio
       if (mode === 'SPEECH') {
@@ -88,8 +124,8 @@ const MotivationWidget: React.FC<MotivationWidgetProps> = ({ mode, riskLevel }) 
     } catch (error) {
       console.error("GenAI Error:", error);
       setTip("Take a gentle breath; you are doing the best you can.");
-    } finally {
       setLoading(false);
+      setImageLoading(false);
     }
   };
 
@@ -146,12 +182,23 @@ const MotivationWidget: React.FC<MotivationWidgetProps> = ({ mode, riskLevel }) 
   if (mode === 'OFF') return null;
 
   return (
-    <div className={`border rounded-xl p-6 mb-6 relative overflow-hidden transition-colors ${
+    <div className={`border rounded-xl p-6 mb-6 relative overflow-hidden transition-colors min-h-[160px] flex flex-col justify-center ${
         riskLevel === RiskLevel.ELEVATED || riskLevel === RiskLevel.CRITICAL 
         ? 'bg-gradient-to-r from-amber-900/30 to-slate-900/40 border-amber-500/20' 
         : 'bg-gradient-to-r from-indigo-900/40 to-slate-900/40 border-indigo-500/20'
     }`}>
-        <div className="absolute top-0 right-0 p-4 opacity-5">
+        {/* Generated Background Image */}
+        {bgImage && (
+            <div 
+                className="absolute inset-0 z-0 bg-cover bg-center transition-opacity duration-1000 opacity-30"
+                style={{ backgroundImage: `url(${bgImage})` }}
+            />
+        )}
+        
+        {/* Gradient Overlay for Text Readability */}
+        <div className="absolute inset-0 z-0 bg-gradient-to-r from-slate-950/90 to-slate-900/40" />
+
+        <div className="absolute top-0 right-0 p-4 opacity-10 z-10">
             <Sparkles className={`w-32 h-32 ${riskLevel === RiskLevel.ELEVATED ? 'text-amber-400' : 'text-indigo-400'}`} />
         </div>
         
@@ -161,18 +208,24 @@ const MotivationWidget: React.FC<MotivationWidgetProps> = ({ mode, riskLevel }) 
                      riskLevel === RiskLevel.ELEVATED || riskLevel === RiskLevel.CRITICAL ? 'text-amber-400' : 'text-indigo-400'
                 }`}>
                     <Sparkles className="w-4 h-4" />
-                    <span>{riskLevel === RiskLevel.ELEVATED ? "Gentle Reminder" : "Daily Insight"}</span>
+                    <span>{riskLevel === RiskLevel.ELEVATED ? `Gentle Reminder for ${settings.userName}` : `Daily Insight for ${settings.userName}`}</span>
                 </div>
-                <p className="text-lg sm:text-xl font-medium text-slate-100 italic min-h-[3rem] flex items-center">
+                <p className="text-lg sm:text-xl font-medium text-slate-100 italic min-h-[3rem] flex items-center shadow-black drop-shadow-md">
                     {loading ? (
                         <span className="flex items-center gap-2 text-slate-400 text-base not-italic">
                              <RefreshCw className="w-4 h-4 animate-spin" />
-                             Generative AI is thinking...
+                             Generating personalized insight...
                         </span>
                     ) : (
                         `"${tip}"`
                     )}
                 </p>
+                {imageLoading && !loading && (
+                    <div className="text-xs text-slate-500 mt-2 flex items-center gap-2 animate-pulse">
+                        <ImageIcon className="w-3 h-3" />
+                        Creating ambient background...
+                    </div>
+                )}
             </div>
             
             <div className="flex gap-2">

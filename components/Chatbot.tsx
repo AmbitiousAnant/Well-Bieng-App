@@ -1,18 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Send, Bot, User, Sparkles, Loader2, X } from 'lucide-react';
 import { ai } from '../genai';
-import { Chat, GenerateContentResponse } from "@google/genai";
-import { RiskLevel } from '../types';
-
-interface Message {
-  id: string;
-  role: 'user' | 'model';
-  text: string;
-}
+import { Chat, GenerateContentResponse, ThinkingLevel } from "@google/genai";
+import { RiskLevel, Message, SentimentAnalysis } from '../types';
+import { analyzeSentiment } from '../services/sentimentService';
 
 interface ChatbotProps {
     onClose?: () => void;
     riskLevel?: RiskLevel;
+    onSentimentAnalysis?: (analysis: SentimentAnalysis) => void;
 }
 
 const Chatbot: React.FC<ChatbotProps> = ({ onClose, riskLevel }) => {
@@ -21,21 +17,27 @@ const Chatbot: React.FC<ChatbotProps> = ({ onClose, riskLevel }) => {
   ]);
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isDeepThinking, setIsDeepThinking] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const chatSessionRef = useRef<Chat | null>(null);
   const hasTriggeredProactive = useRef(false);
 
-  // Initialize chat session on mount
+  // Initialize chat session on mount or when deep thinking mode changes
   useEffect(() => {
-    if (!chatSessionRef.current) {
-      chatSessionRef.current = ai.chats.create({
-        model: 'gemini-3-pro-preview',
-        config: {
-          systemInstruction: "You are a supportive, empathetic mental health AI companion named Partner. Your goal is to provide a safe space for the user. Be concise, gentle, and encouraging. Do not provide medical advice, but do suggest professional help if the user seems in danger. Keep responses under 100 words unless asked for more.",
-        },
-      });
-    }
-  }, []);
+    const history = messages.map(m => ({
+      role: m.role,
+      parts: [{ text: m.text }]
+    }));
+
+    chatSessionRef.current = ai.chats.create({
+      model: 'gemini-3.1-pro-preview',
+      history: history.length > 0 ? history : undefined,
+      config: {
+        systemInstruction: "You are a supportive, empathetic mental health AI companion named Partner. Your goal is to provide a safe space for the user. Be concise, gentle, and encouraging. Do not provide medical advice, but do suggest professional help if the user seems in danger. Keep responses under 100 words unless asked for more. If 'Deep Thinking' is enabled, you should provide more profound, reflective, and nuanced insights into the user's emotional state.",
+        thinkingConfig: isDeepThinking ? { thinkingLevel: ThinkingLevel.HIGH } : undefined
+      },
+    });
+  }, [isDeepThinking]);
 
   // Proactive Check-in Logic
   useEffect(() => {
@@ -59,9 +61,17 @@ const Chatbot: React.FC<ChatbotProps> = ({ onClose, riskLevel }) => {
     if (!inputValue.trim() || !chatSessionRef.current || isLoading) return;
 
     const userMsg: Message = { id: Date.now().toString(), role: 'user', text: inputValue };
-    setMessages(prev => [...prev, userMsg]);
+    const updatedMessages = [...messages, userMsg];
+    setMessages(updatedMessages);
     setInputValue('');
     setIsLoading(true);
+
+    // Analyze sentiment after user message
+    analyzeSentiment(updatedMessages).then(analysis => {
+      if (analysis && onSentimentAnalysis) {
+        onSentimentAnalysis(analysis);
+      }
+    });
 
     try {
       const result = await chatSessionRef.current.sendMessageStream({ message: userMsg.text });
@@ -81,6 +91,14 @@ const Chatbot: React.FC<ChatbotProps> = ({ onClose, riskLevel }) => {
           ));
         }
       }
+
+      // Final analysis after model response
+      const finalMessages = [...updatedMessages, { id: modelMsgId, role: 'model', text: fullResponse }];
+      analyzeSentiment(finalMessages).then(analysis => {
+        if (analysis && onSentimentAnalysis) {
+          onSentimentAnalysis(analysis);
+        }
+      });
     } catch (error) {
       console.error("Chat error:", error);
       setMessages(prev => [...prev, { id: Date.now().toString(), role: 'model', text: "I'm having trouble connecting right now. Please try again." }]);
@@ -100,15 +118,29 @@ const Chatbot: React.FC<ChatbotProps> = ({ onClose, riskLevel }) => {
             <div>
             <h2 className="font-semibold text-slate-100">Partner Assistant</h2>
             <p className="text-xs text-slate-400">
-                {riskLevel === RiskLevel.ELEVATED ? "Checking in..." : "Powered by Gemini 3 Pro"}
+                {riskLevel === RiskLevel.ELEVATED ? "Checking in..." : "Powered by Gemini 3.1 Pro"}
             </p>
             </div>
         </div>
-        {onClose && (
-            <button onClick={onClose} className="text-slate-400 hover:text-white p-1">
-                <X className="w-5 h-5" />
+        <div className="flex items-center gap-2">
+            <button 
+                onClick={() => setIsDeepThinking(!isDeepThinking)}
+                className={`flex items-center gap-1.5 px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider transition-all border ${
+                    isDeepThinking 
+                    ? 'bg-indigo-500/20 border-indigo-500/50 text-indigo-300 shadow-[0_0_10px_rgba(99,102,241,0.2)]' 
+                    : 'bg-slate-800 border-slate-700 text-slate-500 hover:text-slate-400'
+                }`}
+                title={isDeepThinking ? "Deep Thinking Active" : "Enable Deep Thinking"}
+            >
+                <Sparkles className={`w-3 h-3 ${isDeepThinking ? 'animate-pulse' : ''}`} />
+                {isDeepThinking ? 'Thinking High' : 'Standard'}
             </button>
-        )}
+            {onClose && (
+                <button onClick={onClose} className="text-slate-400 hover:text-white p-1">
+                    <X className="w-5 h-5" />
+                </button>
+            )}
+        </div>
       </div>
 
       {/* Messages Area */}

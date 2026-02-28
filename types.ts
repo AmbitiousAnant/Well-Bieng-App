@@ -5,6 +5,21 @@ export enum RiskLevel {
   CRITICAL = 'CRITICAL'
 }
 
+export interface Message {
+  id: string;
+  role: 'user' | 'model';
+  text: string;
+  isThinking?: boolean;
+}
+
+export interface SentimentAnalysis {
+  score: number; // 0 to 100
+  dominantEmotion: string;
+  nuance: string;
+  confidence: number;
+  detectedEmotions: { emotion: string; intensity: number }[];
+}
+
 export interface DailyMetric {
   day: string;
   sleepHours: number;
@@ -29,6 +44,7 @@ export interface Contact {
 }
 
 export interface UserSettings {
+  userName: string;
   contacts: Contact[];
   allowAutomatedAlerts: boolean;
   dataRetentionDays: number;

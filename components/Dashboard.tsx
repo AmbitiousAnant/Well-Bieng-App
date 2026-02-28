@@ -1,26 +1,48 @@
+
 import React from 'react';
 import { 
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
   BarChart, Bar, Legend
 } from 'recharts';
 import { Activity, Moon, MessageCircle, HeartPulse, AlertTriangle, CheckCircle } from 'lucide-react';
-import { DailyMetric, RiskLevel, UserSettings } from '../types';
+import { DailyMetric, RiskLevel, UserSettings, SentimentAnalysis } from '../types';
 import MotivationWidget from './MotivationWidget';
 
 interface DashboardProps {
   data: DailyMetric[];
   riskLevel: RiskLevel;
   settings: UserSettings;
+  realTimeSentiment?: SentimentAnalysis | null;
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ data, riskLevel, settings }) => {
+const Dashboard: React.FC<DashboardProps> = ({ data, riskLevel, settings, realTimeSentiment }) => {
   const isCritical = riskLevel === RiskLevel.CRITICAL;
+
+  const getSentimentValue = () => {
+    if (realTimeSentiment) {
+      if (realTimeSentiment.score > 70) return "Positive";
+      if (realTimeSentiment.score > 40) return "Neutral";
+      return "Distress";
+    }
+    return isCritical ? "Distress" : "Positive";
+  };
+
+  const getSentimentSubtext = () => {
+    if (realTimeSentiment) {
+      return `AI Score: ${realTimeSentiment.score} (${realTimeSentiment.dominantEmotion})`;
+    }
+    return isCritical ? "Negative skew" : "Within normal range";
+  };
 
   return (
     <div className="space-y-6">
       
       {/* AI Motivation Widget */}
-      <MotivationWidget mode={settings.motivationConfig.mode} riskLevel={riskLevel} />
+      <MotivationWidget 
+        mode={settings.motivationConfig.mode} 
+        riskLevel={riskLevel} 
+        settings={settings}
+      />
 
       {/* Header Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -40,10 +62,10 @@ const Dashboard: React.FC<DashboardProps> = ({ data, riskLevel, settings }) => {
         />
         <StatCard 
           title="Sentiment" 
-          value={isCritical ? "Distress" : "Positive"} 
-          icon={<HeartPulse className={isCritical ? "text-red-500" : "text-emerald-400"} />} 
-          subtext={isCritical ? "Negative skew" : "Within normal range"}
-          alert={isCritical}
+          value={getSentimentValue()} 
+          icon={<HeartPulse className={isCritical || (realTimeSentiment && realTimeSentiment.score < 40) ? "text-red-500" : "text-emerald-400"} />} 
+          subtext={getSentimentSubtext()}
+          alert={isCritical || (realTimeSentiment && realTimeSentiment.score < 40)}
         />
         <StatCard 
           title="System Status" 
@@ -53,6 +75,75 @@ const Dashboard: React.FC<DashboardProps> = ({ data, riskLevel, settings }) => {
           alert={false}
         />
       </div>
+
+      {/* Real-Time AI Sentiment Analysis */}
+      {realTimeSentiment && (
+        <div className="bg-indigo-900/20 border border-indigo-500/30 rounded-xl p-6 shadow-lg backdrop-blur-md animate-in fade-in slide-in-from-top-4 duration-500">
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="text-lg font-semibold text-indigo-100 flex items-center gap-2">
+              <Activity className="w-5 h-5 text-indigo-400" />
+              Nuanced AI Sentiment Analysis
+            </h3>
+            <div className="text-[10px] font-bold uppercase tracking-widest text-indigo-400 bg-indigo-500/10 px-2 py-1 rounded border border-indigo-500/20">
+              Real-Time Contextual Analysis
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            {/* Main Score & Emotion */}
+            <div className="space-y-4">
+              <div className="flex items-end gap-3">
+                <div className="text-5xl font-black text-white tracking-tighter">
+                  {realTimeSentiment.score}
+                </div>
+                <div className="text-indigo-400 font-medium mb-1">/ 100</div>
+              </div>
+              <div>
+                <div className="text-xs font-bold text-indigo-300 uppercase tracking-wider mb-1">Dominant State</div>
+                <div className="text-2xl font-bold text-white capitalize">{realTimeSentiment.dominantEmotion}</div>
+              </div>
+              <div className="pt-2">
+                <div className="text-xs font-bold text-indigo-300 uppercase tracking-wider mb-2">Confidence</div>
+                <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                  <div 
+                    className="bg-indigo-500 h-full transition-all duration-1000"
+                    style={{ width: `${realTimeSentiment.confidence * 100}%` }}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Nuance & Context */}
+            <div className="lg:col-span-2 space-y-4">
+              <div>
+                <div className="text-xs font-bold text-indigo-300 uppercase tracking-wider mb-2">Nuanced Insight</div>
+                <p className="text-indigo-100/90 italic leading-relaxed text-lg">
+                  "{realTimeSentiment.nuance}"
+                </p>
+              </div>
+              
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-4">
+                {realTimeSentiment.detectedEmotions.map((em, idx) => (
+                  <div key={idx} className="bg-slate-900/50 border border-indigo-500/10 p-3 rounded-lg">
+                    <div className="text-[10px] font-bold text-indigo-400 uppercase mb-1 truncate">{em.emotion}</div>
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1 bg-slate-800 h-1 rounded-full overflow-hidden">
+                        <div 
+                          className="bg-indigo-400 h-full"
+                          style={{ width: `${em.intensity * 100}%` }}
+                        />
+                      </div>
+                      <div className="text-[10px] font-mono text-indigo-300">
+                        {Math.round(em.intensity * 100)}%
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Main Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

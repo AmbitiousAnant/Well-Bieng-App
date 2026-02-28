@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Shield, BarChart2, Settings, User, ToggleLeft, ToggleRight, Info, Users, Bot, MessageCircle, AlertCircle } from 'lucide-react';
 import Dashboard from './components/Dashboard';
@@ -6,7 +7,7 @@ import Intervention from './components/Intervention';
 import SettingsView from './components/SettingsView';
 import Chatbot from './components/Chatbot';
 import { DATA_NORMAL, DATA_ELEVATED, DATA_RISK, MOCK_LOGS, WARNING_LOGS } from './constants';
-import { RiskLevel, UserSettings } from './types';
+import { RiskLevel, UserSettings, SentimentAnalysis } from './types';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<'DASHBOARD' | 'VAULT' | 'SETTINGS'>('DASHBOARD');
@@ -14,9 +15,11 @@ export default function App() {
   const [showIntervention, setShowIntervention] = useState<boolean>(false);
   const [showChat, setShowChat] = useState<boolean>(false);
   const [logs, setLogs] = useState(MOCK_LOGS);
+  const [realTimeSentiment, setRealTimeSentiment] = useState<SentimentAnalysis | null>(null);
 
   // Settings State
   const [settings, setSettings] = useState<UserSettings>({
+    userName: 'Alex',
     contacts: [
       { id: '1', name: "Dr. Sarah Cohen", phone: "555-0199", relation: "Mentor" }
     ],
@@ -157,7 +160,12 @@ export default function App() {
         </div>
 
         {activeTab === 'DASHBOARD' && (
-          <Dashboard data={getCurrentData()} riskLevel={riskLevel} settings={settings} />
+          <Dashboard 
+            data={getCurrentData()} 
+            riskLevel={riskLevel} 
+            settings={settings} 
+            realTimeSentiment={realTimeSentiment}
+          />
         )}
 
         {activeTab === 'SETTINGS' && (
@@ -176,6 +184,7 @@ export default function App() {
                 <Chatbot 
                     riskLevel={riskLevel} 
                     onClose={() => setShowChat(false)} 
+                    onSentimentAnalysis={setRealTimeSentiment}
                 />
             </div>
         )}
